@@ -23,25 +23,33 @@ struct chip8 {
 };
 
 
-void init_c8(struct chip8* c8);
+void init_c8(struct chip8* c8, const char* romname);
 
 
-int main() {
+int main(int argc, char *argv[]) {
+    
+    if (argc != 2) {
+        printf("ERROR: NO ROM FILE PASSED AS ARGUMENT OR TOO MANY ARGUMENTS\n");
+        exit(EXIT_FAILURE);
+    }
+
     struct chip8 c8;
-    init_c8(&c8);
-
     const int screenWidth = 64*10;
     const int screenHeight = 32*10;
 
+    init_c8(&c8, argv[1]);
     InitWindow(screenWidth, screenHeight, "CHIP-8");
     SetTargetFPS(60);
 
     // Main game loop
     while (!WindowShouldClose())
     {
-        // Update
+        /* Update */
+        // Decrement timers (im not sure if update is tied to fps yet, hope it is)
+        if (c8.DT)  c8.DT--;
+        if (c8.ST)  c8.SP--;
 
-        // Draw
+        /* Draw */
         BeginDrawing();
 
             ClearBackground(RAYWHITE);
@@ -60,7 +68,7 @@ int main() {
 }
 
 
-void init_c8(struct chip8* c8) {
+void init_c8(struct chip8* c8, const char* romname) {
     // init display
     for (int y = 0; y < 32; y++)
         for (int x = 0; x < 64; x++) {
@@ -91,4 +99,21 @@ void init_c8(struct chip8* c8) {
         0xF0, 0x80, 0xF0, 0x80, 0x80  // F
     };
     memmove(&(c8->memory[0x050]), fonts, sizeof(fonts));
+
+    // timers
+    c8->DT = 0;
+    c8->ST = 0;
+
+    // read rom into memory
+    FILE *fp = fopen(romname, "rb");
+    if (fp == NULL) {
+        printf("ERROR: COULD NOT READ ROM\n");
+        exit(EXIT_FAILURE);
+    }
+    fseek(fp, 0, SEEK_END);
+    long int file_len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    fread(&(c8->memory[0x200]), sizeof(u8), file_len, fp);
+    fclose(fp);
+
 }
