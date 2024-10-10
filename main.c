@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
         
         // FETCH
         u16 instruction = (c8.memory[c8.PC++] << 8) | c8.memory[c8.PC++];
-        
+
         // DECODE
         struct Nibbles nibbles = {
             .type = (instruction >> 12) & 0b1111,
@@ -80,65 +80,77 @@ int main(int argc, char *argv[]) {
         switch (nibbles.type) {
             case 0: 
                 switch (nibbles.NN) {
-                    // CLS
-                    case 0xE0:  
+                    // * CLS
+                    case 0xE0:
+                        printf("CLS\n");
                         clear_screen(&c8);
                         break;
                     
-                    // RET
+                    // * RET
                     case 0xEE:
+                        printf("RET\n");
                         c8.PC = stack_pop(&c8);
                         break;
 
                     default:
+                        printf("UNKNOWN INSTRUCTION: %04x\n", instruction);
                         break;
                 }
+            break;
             
-            // JP
+            // * JP
             case 1:
+                printf("JP1 (PC = %x, NNN = %x)\n", c8.PC, nibbles.NNN);
                 c8.PC = nibbles.NNN;
+                printf("JP2 (PC = %x, NNN = %x)\n", c8.PC, nibbles.NNN);
                 break;
             
-            // CALL
+            // * CALL
             case 2:
+                printf("CALL\n");
                 stack_push(&c8, c8.PC);
                 c8.PC = nibbles.NNN;
                 break;
             
-            // LD Vx, byte
+            // * LD Vx, byte
             case 6:
+                printf("LD V\n");
                 c8.V[nibbles.X] = nibbles.NN;
                 break;
 
-            // ADD
+            // * ADD 
             case 7:
+                printf("ADD\n");
                 c8.V[nibbles.X] += nibbles.NN;
                 break;
 
-            // LD I, addr
+            // * LD I, addr
             case 0xA:
+                printf("LD I\n");
                 c8.I = nibbles.NNN;
                 break;
 
-            // DRW Vx, Vy, nibble
+            // * DRW Vx, Vy, nibble
             case 0xD:
+                printf("DRW\n");
                 draw_sprite(&c8, c8.V[nibbles.X], c8.V[nibbles.Y], nibbles.N);
                 break;
 
             default:
+                printf("UNKNOWN INSTRUCTION: %04x\n", instruction);
                 break;
         }
 
         /* Draw */
         BeginDrawing();
 
-            ClearBackground(RAYWHITE);
+            ClearBackground(BLACK);
 
             // Render screen
             for (size_t y = 0; y < 32; y++)
                 for (size_t x = 0; x < 64; x++) 
                     if (c8.display[y][x])
-                        DrawRectangle(x*10, y*10, 10, 10, BLACK);
+                        DrawRectangle(x*10, y*10, 10, 10, WHITE);
 
         EndDrawing();
     }
@@ -219,17 +231,22 @@ void clear_screen(struct Chip8* c8) {
             c8->display[y][x] = 0;
 }
 
-// unfinished
 void draw_sprite(struct Chip8 *c8, u8 X, u8 Y, u8 N) {
-    u8 x = X % 64;
-    u8 y = Y % 32;
-
-    for (size_t i = 0; i < N; i += 2) {
-        u8 sprite = c8->memory[c8->I + i];
-        for (size_t j = 0, k = 3; j < 4; j++, k--) {
-            c8->display[y][x+j] ^= (sprite >> k) & 1;
+    u8 x = X % 63;
+    u8 y = Y % 31;
+    c8->V[0xF] = 0;
+    
+    for (int i = 0; i < N; i++) {
+        if (y + i >= 32)
+            continue;
+        
+        u8 current_byte = c8->memory[(c8->I)+i];
+        for (int j = 7, x_pos = 0; j >= 0; j--, x_pos++) {
+            if (x + x_pos >= 64)
+                continue;
+            if (c8->display[y+i][x+x_pos] && (current_byte >> j) & 1)
+                c8->V[0xF] = 1;
+            c8->display[y+i][x+x_pos] ^= (current_byte >> j) & 1;
         }
     }
-    
-
 }
