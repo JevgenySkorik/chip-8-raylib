@@ -2,7 +2,10 @@
 
 *work-in-progress*
 
-Pretty self-explanatory, this is a chip-8 interpreter made using raylib, at least thats what it's going to be when I finish it.
+Pretty self-explanatory, this is a chip-8 interpreter made using raylib.
+Currently the interpreter is only able to run the splash screen type roms(IBM-logo, chip8-logo), as not all instructions have been implemented yet.
+
+![Interpreter running the chip8-logo rom](screenshot.png)
 
 Resources used:
 - [Guide to making a CHIP-8 emulator](https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#keypad)
