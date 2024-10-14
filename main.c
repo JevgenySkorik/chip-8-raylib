@@ -51,6 +51,7 @@ int main(int argc, char *argv[]) {
     const int screenWidth = 64*10;
     const int screenHeight = 32*10;
 
+    srand(time(NULL));
     init_c8(&c8, argv[1]);
     InitWindow(screenWidth, screenHeight, "CHIP-8");
     SetTargetFPS(60);
@@ -93,7 +94,7 @@ int main(int argc, char *argv[]) {
                         break;
 
                     default:
-                        printf("UNKNOWN INSTRUCTION: %04x\n", instruction);
+                        printf("Skipping instruction: %04x\n", instruction);
                         break;
                 }
             break;
@@ -112,6 +113,24 @@ int main(int argc, char *argv[]) {
                 c8.PC = nibbles.NNN;
                 break;
             
+            // SE Vx, byte
+            case 3:
+                printf("SE Vx, byte\n");
+                if (c8.V[nibbles.X] == nibbles.NN)
+                    c8.PC += 2;
+            
+            // SNE Vx, byte
+            case 4:
+                printf("SNE Vx, byte\n");
+                if (c8.V[nibbles.X] != nibbles.NN)
+                    c8.PC += 2;
+
+            // SE Vx, Vy
+            case 5:
+                printf("SE Vx, Vy\n");
+                if (c8.V[nibbles.X] == c8.V[nibbles.Y])
+                    c8.PC += 2;
+
             // * LD Vx, byte
             case 6:
                 printf("LD V\n");
@@ -124,10 +143,97 @@ int main(int argc, char *argv[]) {
                 c8.V[nibbles.X] += nibbles.NN;
                 break;
 
+            case 8:
+                switch (nibbles.N) {
+                    case 0:
+                        printf("LD Vx, Vy\n");
+                        c8.V[nibbles.X] = c8.V[nibbles.Y];
+                        break;
+
+                    case 1:
+                        printf("OR Vx, Vy\n");
+                        c8.V[nibbles.X] |= c8.V[nibbles.Y];
+                        break;
+
+                    case 2:
+                        printf("AND Vx, Vy\n");
+                        c8.V[nibbles.X] &= c8.V[nibbles.Y];
+                        break;
+ 
+                    case 3:
+                        printf("XOR Vx, Vy\n");
+                        c8.V[nibbles.X] ^= c8.V[nibbles.Y];
+                        break;
+
+                    case 4:
+                        printf("ADD Vx, Vy\n");
+                        c8.V[0xF] = 0;
+                        u16 result = c8.V[nibbles.X] + c8.V[nibbles.Y];
+                        if (result > 255)
+                            c8.V[0xF] = 1;
+                        c8.V[nibbles.X] = result;
+                        break;
+
+                    case 5:
+                        printf("SUB Vx, Vy\n");
+                        c8.V[0xF] = 0;
+                        if (c8.V[nibbles.X] > c8.V[nibbles.Y])
+                            c8.V[0xF] = 1;
+                        c8.V[nibbles.X] -= c8.V[nibbles.Y];
+                        break;
+
+                    case 6:
+                        printf("SHR Vx, Vy\n");
+                        c8.V[0xF] = 0;
+                        if (c8.V[nibbles.X] & 1)
+                            c8.V[0xF] = 1;
+                        c8.V[nibbles.X] /= 2;
+                        break;
+
+                    case 7:
+                        printf("SUBN Vx, Vy\n");
+                        c8.V[0xF] = 0;
+                        if (c8.V[nibbles.Y] > c8.V[nibbles.X])
+                            c8.V[0xF] = 1;
+                        c8.V[nibbles.X] = c8.V[nibbles.Y] - c8.V[nibbles.X];
+                        break;
+
+                    case 0xE:
+                        printf("SHL Vx, Vy\n");
+                        c8.V[0xF] = 0;
+                        if (c8.V[nibbles.X] & (1 << 7))
+                            c8.V[0xF] = 1;
+                        c8.V[nibbles.X] *= 2;
+                        break;                    
+ 
+                    default:
+                        printf("This instruction shouldn't exist: %04x\n", instruction);
+                        break;
+                }
+
+                break;
+
+            case 9:
+                printf("SNE Vx, Vy\n");
+                if (c8.V[nibbles.X] != c8.V[nibbles.Y])
+                    c8.PC += 2;
+                break;
+
             // * LD I, addr
             case 0xA:
                 printf("LD I\n");
                 c8.I = nibbles.NNN;
+                break;
+
+            case 0xB:
+                printf("JP V0, addr\n");
+                c8.PC = nibbles.NNN + c8.V[0];
+                break;
+
+            case 0xC:
+                printf("RND Vx, byte\n");
+                u8 randomValue = rand() % (255 + 1);
+                c8.V[nibbles.X] = randomValue & nibbles.NN;
                 break;
 
             // * DRW Vx, Vy, nibble
