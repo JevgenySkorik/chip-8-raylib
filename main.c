@@ -1,7 +1,8 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <raylib.h>
-#include <stdio.h>
 
 typedef unsigned char u8;
 typedef unsigned int u16;
@@ -16,8 +17,8 @@ struct Chip8 {
     u16 I;
 
     // 'pseudo'-registers
-    u16 PC;            // program counter
-    u8 SP;              // stack pointer
+    u16 PC;             // program counter
+    signed char SP;              // stack pointer
     u8 DT;              // delay timer
     u8 ST;              // sound timer
 };
@@ -31,13 +32,14 @@ struct Nibbles {
     u16 NNN;
 };
 
+void print_stack(struct Chip8* c8);
 
 void init_c8(struct Chip8* c8, const char* romname);
 void stack_push(struct Chip8* c8, u16 data);
 u16 stack_pop(struct Chip8* c8);
 // instructions
 void clear_screen(struct Chip8* c8);
-void draw_sprite(struct Chip8 *c8, u8 X, u8 Y, u8 N);
+void draw_sprite(struct Chip8* c8, u8 X, u8 Y, u8 N);
 
 
 int main(int argc, char *argv[]) {
@@ -81,13 +83,13 @@ int main(int argc, char *argv[]) {
         switch (nibbles.type) {
             case 0: 
                 switch (nibbles.NN) {
-                    // * CLS
+                    // CLS
                     case 0xE0:
                         printf("CLS\n");
                         clear_screen(&c8);
                         break;
                     
-                    // * RET
+                    // RET
                     case 0xEE:
                         printf("RET\n");
                         c8.PC = stack_pop(&c8);
@@ -99,16 +101,14 @@ int main(int argc, char *argv[]) {
                 }
             break;
             
-            // * JP
+            // JP
             case 1:
                 printf("JP1 (PC = %x, NNN = %x)\n", c8.PC, nibbles.NNN);
                 c8.PC = nibbles.NNN;
-                printf("JP2 (PC = %x, NNN = %x)\n", c8.PC, nibbles.NNN);
                 break;
             
-            // * CALL
+            // CALL
             case 2:
-                printf("CALL\n");
                 stack_push(&c8, c8.PC);
                 c8.PC = nibbles.NNN;
                 break;
@@ -131,13 +131,13 @@ int main(int argc, char *argv[]) {
                 if (c8.V[nibbles.X] == c8.V[nibbles.Y])
                     c8.PC += 2;
 
-            // * LD Vx, byte
+            // LD Vx, byte
             case 6:
                 printf("LD V\n");
                 c8.V[nibbles.X] = nibbles.NN;
                 break;
 
-            // * ADD 
+            // ADD 
             case 7:
                 printf("ADD\n");
                 c8.V[nibbles.X] += nibbles.NN;
@@ -212,14 +212,14 @@ int main(int argc, char *argv[]) {
                 }
 
                 break;
-
+            // NEED FIXING
             case 9:
                 printf("SNE Vx, Vy\n");
                 if (c8.V[nibbles.X] != c8.V[nibbles.Y])
                     c8.PC += 2;
                 break;
 
-            // * LD I, addr
+            // LD I, addr
             case 0xA:
                 printf("LD I\n");
                 c8.I = nibbles.NNN;
@@ -236,10 +236,83 @@ int main(int argc, char *argv[]) {
                 c8.V[nibbles.X] = randomValue & nibbles.NN;
                 break;
 
-            // * DRW Vx, Vy, nibble
+            // DRW Vx, Vy, nibble
             case 0xD:
                 printf("DRW\n");
                 draw_sprite(&c8, c8.V[nibbles.X], c8.V[nibbles.Y], nibbles.N);
+                break;
+
+            case 0xE:
+                switch (nibbles.NN) {
+                    // SKP Vx
+                    case 0x9E:
+                        printf("SKP Vx\n");
+                        printf("Not yet implemented(keyboard)\n");
+                        break;
+                    // SKNP Vx
+                    case 0xA1:
+                        printf("SKNP Vx\n");
+                        printf("Not yet implemented(keyboard)\n");
+                        break;
+                }
+                break;            
+
+            case 0xF:
+                switch (nibbles.NN) {
+                    // LD Vx, DT
+                    case 0x07:
+                        printf("LD Vx, DT\n");
+                        c8.V[nibbles.X] = c8.DT;
+                        break;
+                    // LD Vx, K
+                    case 0x0A:
+                        printf("LD Vx, K\n");
+                        printf("Not yet implemented(keyboard)\n");
+                        break;
+                    // LD DT, Vx
+                    case 0x15:
+                        printf("LD DT, Vx\n");
+                        c8.DT = c8.V[nibbles.X];
+                        break;
+                    // LD ST, Vx
+                    case 0x18:
+                        printf("LD ST, Vx\n");
+                        c8.ST = c8.V[nibbles.X];
+                        break;
+                    // ADD I, Vx
+                    case 0x1E:
+                        printf("ADD I, Vx\n");
+                        c8.I += c8.V[nibbles.X];
+                        break;
+                    // LD F, Vx
+                    case 0x29:
+                        printf("LD F, Vx\n");
+                        c8.I = (nibbles.X * 5) + 0x050;
+                        break;
+
+                    // NEEDS FIXING
+                    // LD B, Vx
+                    case 0x33:
+                        printf("LD B, Vx\n");
+                        c8.memory[c8.I] = nibbles.X / 100;
+                        c8.memory[c8.I+1] = (nibbles.X % 100) / 10;
+                        c8.memory[c8.I+2] = (nibbles.X % 10);
+                        break;
+                    // LD [I], Vx
+                    case 0x55:
+                        printf("LD [I], Vx\n");
+                        for (size_t i = 0; i <= nibbles.X; i++) {
+                            c8.memory[c8.I+i] = c8.V[i];
+                        }
+                        break;
+                    // LD Vx, [I]
+                    case 0x65:
+                        printf("LD Vx, [I]\n");
+                        for (size_t i = 0; i <= nibbles.X; i++) {
+                            c8.V[i] = c8.memory[c8.I+i];
+                        }
+                        break;
+                }
                 break;
 
             default:
@@ -308,13 +381,13 @@ void init_c8(struct Chip8* c8, const char* romname) {
     c8->PC = 0x200;
 
     // stack
-    c8->SP = 0;
+    c8->SP = -1;
     for (size_t i = 0; i < 12; i++)
         c8->stack[i] = 0;
 }
 
 void stack_push(struct Chip8* c8, u16 data) {
-    c8->stack[c8->SP++] = data;
+    c8->stack[++c8->SP] = data;
     if (c8->SP > 11) {
         printf("ERROR: STACK OVERFLOW\n");
         exit(EXIT_FAILURE);
@@ -324,7 +397,7 @@ void stack_push(struct Chip8* c8, u16 data) {
 u16 stack_pop(struct Chip8* c8) {
     u16 temp = c8->stack[c8->SP];
     c8->stack[c8->SP--] = 0;
-    if (c8->SP < 0) {
+    if (c8->SP < -1) {
         printf("ERROR: RETURN FROM EMPTY STACK\n");
         exit(EXIT_FAILURE);
     }
@@ -355,4 +428,15 @@ void draw_sprite(struct Chip8 *c8, u8 X, u8 Y, u8 N) {
             c8->display[y+i][x+x_pos] ^= (current_byte >> j) & 1;
         }
     }
+}
+
+void print_stack(struct Chip8 *c8) {
+    if (c8->SP < 0) {
+        printf("empty stack\n");
+        return;
+    }
+    printf("SP: %d, stack: ", c8->SP);
+    for (size_t i = 0; i <= c8->SP; i++)
+        printf("%04x ", c8->stack[i]);
+    printf("\n");
 }
