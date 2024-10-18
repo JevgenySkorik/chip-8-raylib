@@ -1,7 +1,13 @@
+// Debug modes:
+// 0 - off
+// 1 - show debug data
+// 2 - step by step mode
+
 #define DEBUG 1
 
 #define debug_print(fmt, ...) \
             do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -90,6 +96,10 @@ int main(int argc, char *argv[]) {
             .NNN = instruction & 0xFFF,
         };
 
+        #if DEBUG > 1
+            getchar();
+        #endif
+
         // EXECUTE
         switch (nibbles.type) {
             case 0: 
@@ -130,18 +140,21 @@ int main(int argc, char *argv[]) {
                 debug_print("%s\n", "SE Vx, byte");
                 if (c8.V[nibbles.X] == nibbles.NN)
                     c8.PC += 2;
+                break;
             
             // SNE Vx, byte
             case 4:
                 debug_print("%s\n", "SNE Vx, byte");
                 if (c8.V[nibbles.X] != nibbles.NN)
                     c8.PC += 2;
+                break;
 
             // SE Vx, Vy
             case 5:
                 debug_print("%s\n", "SE Vx, Vy");
                 if (c8.V[nibbles.X] == c8.V[nibbles.Y])
                     c8.PC += 2;
+                break;
 
             // LD Vx, byte
             case 6:
@@ -157,26 +170,27 @@ int main(int argc, char *argv[]) {
 
             case 8:
                 switch (nibbles.N) {
+                    // LD Vx, Vy
                     case 0:
                         debug_print("%s\n", "LD Vx, Vy");
                         c8.V[nibbles.X] = c8.V[nibbles.Y];
                         break;
-
+                    // OR Vx, Vy
                     case 1:
                         debug_print("%s\n", "OR Vx, Vy");
                         c8.V[nibbles.X] |= c8.V[nibbles.Y];
                         break;
-
+                    // AND Vx, Vy
                     case 2:
                         debug_print("%s\n", "AND Vx, Vy");
                         c8.V[nibbles.X] &= c8.V[nibbles.Y];
                         break;
- 
+                    // XOR Vx, Vy
                     case 3:
                         debug_print("%s\n", "XOR Vx, Vy");
                         c8.V[nibbles.X] ^= c8.V[nibbles.Y];
                         break;
-
+                    // ADD Vx, Vy
                     case 4:
                         debug_print("%s\n", "ADD Vx, Vy");
                         c8.V[0xF] = 0;
@@ -185,7 +199,7 @@ int main(int argc, char *argv[]) {
                             c8.V[0xF] = 1;
                         c8.V[nibbles.X] = result;
                         break;
-
+                    // SUB Vx, Vy
                     case 5:
                         debug_print("%s\n", "SUB Vx, Vy");
                         c8.V[0xF] = 0;
@@ -193,7 +207,7 @@ int main(int argc, char *argv[]) {
                             c8.V[0xF] = 1;
                         c8.V[nibbles.X] -= c8.V[nibbles.Y];
                         break;
-
+                    // SHR Vx, Vy
                     case 6:
                         debug_print("%s\n", "SHR Vx, Vy");
                         c8.V[0xF] = 0;
@@ -201,7 +215,7 @@ int main(int argc, char *argv[]) {
                             c8.V[0xF] = 1;
                         c8.V[nibbles.X] /= 2;
                         break;
-
+                    // SUBN Vx, Vy
                     case 7:
                         debug_print("%s\n", "SUBN Vx, Vy");
                         c8.V[0xF] = 0;
@@ -210,6 +224,7 @@ int main(int argc, char *argv[]) {
                         c8.V[nibbles.X] = c8.V[nibbles.Y] - c8.V[nibbles.X];
                         break;
 
+                    // SHL Vx, Vy
                     case 0xE:
                         debug_print("%s\n", "SHL Vx, Vy");
                         c8.V[0xF] = 0;
@@ -222,9 +237,9 @@ int main(int argc, char *argv[]) {
                         debug_print("This instruction shouldn't exist: %04x\n", instruction);
                         break;
                 }
-
                 break;
-            // NEED FIXING
+
+            // SNE Vx, Vy
             case 9:
                 debug_print("%s\n", "SNE Vx, Vy");
                 if (c8.V[nibbles.X] != c8.V[nibbles.Y])
@@ -236,12 +251,13 @@ int main(int argc, char *argv[]) {
                 debug_print("%s\n", "LD I");
                 c8.I = nibbles.NNN;
                 break;
-
+            // JP V0, addr
             case 0xB:
                 debug_print("%s\n", "JP V0, addr");
                 c8.PC = nibbles.NNN + c8.V[0];
                 break;
 
+            // RND Vx, byte
             case 0xC:
                 debug_print("%s\n", "RND Vx, byte");
                 u8 randomValue = rand() % (255 + 1);
@@ -298,14 +314,12 @@ int main(int argc, char *argv[]) {
                         debug_print("%s\n", "LD F, Vx");
                         c8.I = (nibbles.X * 5) + 0x050;
                         break;
-
-                    // NEEDS FIXING
                     // LD B, Vx
                     case 0x33:
                         debug_print("%s\n", "LD B, Vx");
-                        c8.memory[c8.I] = nibbles.X / 100;
-                        c8.memory[c8.I+1] = (nibbles.X % 100) / 10;
-                        c8.memory[c8.I+2] = (nibbles.X % 10);
+                        c8.memory[c8.I] = c8.V[nibbles.X] / 100;
+                        c8.memory[c8.I+1] = (c8.V[nibbles.X] % 100) / 10;
+                        c8.memory[c8.I+2] = (c8.V[nibbles.X] % 10);
                         break;
                     // LD [I], Vx
                     case 0x55:
@@ -335,7 +349,13 @@ int main(int argc, char *argv[]) {
             ClearBackground(BLACK);
 
             // Draw border
-            DrawRectangleLines(10, 10, 64*10, 32*10, GREEN);
+            DrawRectangleLines(9, 9, 64*10+1, 32*10+1, WHITE);
+
+            // Render screen
+            for (size_t y = 0; y < 32; y++)
+                for (size_t x = 0; x < 64; x++) 
+                    if (c8.display[y][x])
+                        DrawRectangle((x+1)*10, (y+1)*10, 10, 10, WHITE);
 
             // Print debug information
             #if DEBUG > 0
@@ -345,7 +365,8 @@ int main(int argc, char *argv[]) {
                     DrawText(TextFormat("V[%d] = %d", i, c8.V[i]), 64*10+10+10, y+=18, 16, WHITE);
 
                 y = 0;
-                DrawText(TextFormat("I = 0x%04x", c8.I), 64*10+10+10+120, y+=10, 16, WHITE);
+                DrawText(TextFormat("Instruction = 0x%04x", instruction), 64*10+10+10+120, y+=10, 16, WHITE);
+                DrawText(TextFormat("I = 0x%04x", c8.I), 64*10+10+10+120, y+=18, 16, WHITE);
                 DrawText(TextFormat("PC = 0x%04x", c8.PC), 64*10+10+10+120, y+=18, 16, WHITE);
                 DrawText(TextFormat("SP = %d", c8.SP), 64*10+10+10+120, y+=18, 16, WHITE);
                 DrawText("Timers:", 64*10+10+10+120, y+=18, 16, WHITE);
@@ -357,12 +378,6 @@ int main(int argc, char *argv[]) {
                         DrawText(TextFormat("S[i] = 0x%04x", c8.stack[i]), 64*10+10+10+120, y+=18, 16, WHITE);
                 }
             #endif
-
-            // Render screen
-            for (size_t y = 0; y < 32; y++)
-                for (size_t x = 0; x < 64; x++) 
-                    if (c8.display[y][x])
-                        DrawRectangle((x+1)*10, (y+1)*10, 10, 10, WHITE);
 
         EndDrawing();
     }
@@ -395,6 +410,10 @@ void init_c8(struct Chip8* c8, const char* romname) {
         0xF0, 0x80, 0xF0, 0x80, 0x80  // F
     };
     memmove(&(c8->memory[0x050]), fonts, sizeof(fonts));
+
+    // Registers
+    for (size_t i = 0; i < 16; i++)
+        c8->V[i] = 0;
 
     // timers
     c8->DT = 0;
@@ -461,15 +480,4 @@ void draw_sprite(struct Chip8 *c8, u8 X, u8 Y, u8 N) {
             c8->display[y+i][x+x_pos] ^= (current_byte >> j) & 1;
         }
     }
-}
-
-void print_stack(struct Chip8 *c8) {
-    if (c8->SP < 0) {
-        printf("empty stack\n");
-        return;
-    }
-    printf("SP: %d, stack: ", c8->SP);
-    for (size_t i = 0; i <= c8->SP; i++)
-        printf("%04x ", c8->stack[i]);
-    printf("\n");
 }
